@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Speech Sentiment Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Speech Sentiment Analyzer</h1>
+        
+        <button id="speakBtn" onclick="startAnalysis()">
+            <span id="micIcon">🎤</span> Speak Now
+        </button>
+
+        <!-- Progress bar -->
+        <div id="progressContainer" style="display:none;">
+            <div id="progressBar"></div>
+        </div>
+
+        <div class="spinner" id="spinner" style="display: none;"></div>
+
+        <div id="result" style="display: none;">
+            <p><strong>Sentence:</strong> <span id="sentence"></span></p>
+            <p><strong>Classification:</strong> <span id="classification"></span></p>
+            <p><strong>Positive Words:</strong> <span id="positive_words" class="positive"></span></p>
+            <p><strong>Negative Words:</strong> <span id="negative_words" class="negative"></span></p>
+            <button onclick="reset()">🔁 Record Again</button>
+        </div>
+
+        <div id="error" class="error-message"></div>
+    </div>
+
+    <script>
+        let progressInterval;
+        let progress = 0;
+
+        function startProgressBar() {
+            progress = 0;
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('progressBar').style.width = '0%';
+            progressInterval = setInterval(() => {
+                progress += 1;
+                document.getElementById('progressBar').style.width = progress + '%';
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                }
+            }, 100);
+        }
+
+        function stopProgressBar() {
+            clearInterval(progressInterval);
+            document.getElementById('progressContainer').style.display = 'none';
+        }
+
+        function startAnalysis() {
+            document.getElementById('speakBtn').classList.add('listening');
+            document.getElementById('spinner').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').innerText = "";
+            startProgressBar();
+
+            fetch('/analyze', {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    stopProgressBar();
+                    document.getElementById('speakBtn').classList.remove('listening');
+                    document.getElementById('spinner').style.display = 'none';
+
+                    if (data.error) {
+                        document.getElementById('error').innerText = data.error;
+                        document.getElementById('speakBtn').style.display = 'inline-block';
+                    } else {
+                        document.getElementById('sentence').innerText = data.sentence;
+                        document.getElementById('classification').innerText = data.classification;
+
+                        document.getElementById('positive_words').innerHTML = data.positive_words.map(word => `<span class="word positive">${word}</span>`).join(", ");
+                        document.getElementById('negative_words').innerHTML = data.negative_words.map(word => `<span class="word negative">${word}</span>`).join(", ");
+
+                        document.getElementById('result').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    stopProgressBar();
+                    document.getElementById('speakBtn').classList.remove('listening');
+                    document.getElementById('spinner').style.display = 'none';
+                    document.getElementById('error').innerText = "Error occurred.";
+                });
+        }
+
+        function reset() {
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').innerText = "";
+        }
+    </script>
+</body>
+</html>
